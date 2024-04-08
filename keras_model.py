@@ -18,6 +18,9 @@ import numpy as np
 
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
               rnn_size, fnn_size, weights, doa_objective):
+    
+    print ("data_in is:", data_in)
+    print ("data_out is:", data_out)
     # model definition
     spec_start = Input(shape=(data_in[-3], data_in[-2], data_in[-1]))
 
@@ -30,7 +33,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = MaxPooling2D(pool_size=(t_pool_size[i], f_pool_size[i]))(spec_cnn)
         spec_cnn = Dropout(dropout_rate)(spec_cnn)
     spec_cnn = Permute((2, 1, 3))(spec_cnn)
-
+    print(spec_cnn)
     # RNN
     spec_rnn = Reshape((data_out[0][-2], -1))(spec_cnn)
     for nb_rnn_filt in rnn_size:
@@ -69,6 +72,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print('ERROR: Unknown doa_objective: {}'.format(doa_objective))
         exit()
     model.summary()
+    exit()
     return model
 
 

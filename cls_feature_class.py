@@ -6,7 +6,8 @@ import os
 import numpy as np
 import scipy.io.wavfile as wav
 from sklearn import preprocessing
-from sklearn.externals import joblib
+# from sklearn.externals import joblib
+import joblib
 from IPython import embed
 import matplotlib.pyplot as plot
 import librosa
@@ -26,10 +27,14 @@ class FeatureClass:
         :param is_eval: if True, does not load dataset labels.
         """
 
-        # Input directories
+        # Input directories 
+        # feat_label的位置
         self._feat_label_dir = params['feat_label_dir']
+        # 数据集路径
         self._dataset_dir = params['dataset_dir']
+        # 填充foa_dev或foa_eval
         self._dataset_combination = '{}_{}'.format(params['dataset'], 'eval' if is_eval else 'dev')
+        # 完整的foa_dev或foa_eval路径
         self._aud_dir = os.path.join(self._dataset_dir, self._dataset_combination)
 
         self._desc_dir = None if is_eval else os.path.join(self._dataset_dir, 'metadata_dev')
@@ -42,6 +47,7 @@ class FeatureClass:
         # Local parameters
         self._is_eval = is_eval
 
+        # 采样率
         self._fs = params['fs']
         self._hop_len_s = params['hop_len_s']
         self._hop_len = int(self._fs * self._hop_len_s)
@@ -57,6 +63,7 @@ class FeatureClass:
         self._mel_wts = librosa.filters.mel(sr=self._fs, n_fft=self._nfft, n_mels=self._nb_mel_bins).T
 
         self._dataset = params['dataset']
+        # 防止归一化处理出现0，这是一个很小的数字
         self._eps = 1e-8
         self._nb_channels = 4
 
@@ -71,31 +78,47 @@ class FeatureClass:
         self._max_label_frames = int(np.ceil(self._audio_max_len_samples / float(self._label_hop_len)))
 
     def _load_audio(self, audio_path):
+        
+        # 读取音频文件，fs采样率，audio包含音频的numpy数组
         fs, audio = wav.read(audio_path)
+        
+        # 把数字限制到1~-1之间
         audio = audio[:, :self._nb_channels] / 32768.0 + self._eps
+        
+        # 限制音频长度
         if audio.shape[0] < self._audio_max_len_samples:
             zero_pad = np.random.rand(self._audio_max_len_samples - audio.shape[0], audio.shape[1])*self._eps
             audio = np.vstack((audio, zero_pad))
         elif audio.shape[0] > self._audio_max_len_samples:
             audio = audio[:self._audio_max_len_samples, :]
+        
         return audio, fs
 
     # INPUT FEATURES
     @staticmethod
     def _next_greater_power_of_2(x):
+        '''找到大于等于输入 x 的最小的 2 的幂'''
         return 2 ** (x - 1).bit_length()
 
     def _spectrogram(self, audio_input):
+        '''接受一个音频输入 audio_input,并返回其对应的短时傅立叶变换(STFT)的频谱。压缩'''
+        # 确定输入音频数据的通道数
         _nb_ch = audio_input.shape[1]
         nb_bins = self._nfft // 2
         spectra = np.zeros((self._max_feat_frames, nb_bins + 1, _nb_ch), dtype=complex)
         for ch_cnt in range(_nb_ch):
+            # 使用 Librosa 库的 librosa.core.stft 函数计算音频输入的短时傅立叶变换(STFT)
+            # 这里将音频数据转换为 Fortran 风格的数组,以确保在 Librosa 中进行处理时具有更好的性能
+            # 参数 n_fft 指定了 FFT 的长度,hop_length 指定了帧移的长度
+            # win_length 指定了窗口函数的长度,window='hann' 表示使用汉宁窗
             stft_ch = librosa.core.stft(np.asfortranarray(audio_input[:, ch_cnt]), n_fft=self._nfft, hop_length=self._hop_len,
                                         win_length=self._win_len, window='hann')
+            # 将计算得到的 STFT 结果存储到 spectra 数组中
             spectra[:, :, ch_cnt] = stft_ch[:, :self._max_feat_frames].T
         return spectra
 
     def _get_mel_spectrogram(self, linear_spectra):
+        '''将线性频谱转换为梅尔频谱'''
         mel_feat = np.zeros((linear_spectra.shape[0], self._nb_mel_bins, linear_spectra.shape[-1]))
         for ch_cnt in range(linear_spectra.shape[-1]):
             mag_spectra = np.abs(linear_spectra[:, :, ch_cnt])**2
@@ -106,6 +129,7 @@ class FeatureClass:
         return mel_feat
 
     def _get_foa_intensity_vectors(self, linear_spectra):
+        '''线性频谱中计算声场的强度向量'''
         IVx = np.real(np.conj(linear_spectra[:, :, 0]) * linear_spectra[:, :, 3])
         IVy = np.real(np.conj(linear_spectra[:, :, 0]) * linear_spectra[:, :, 1])
         IVz = np.real(np.conj(linear_spectra[:, :, 0]) * linear_spectra[:, :, 2])
@@ -137,7 +161,10 @@ class FeatureClass:
         return gcc_feat.reshape((linear_spectra.shape[0], self._nb_mel_bins*gcc_channels))
 
     def _get_spectrogram_for_file(self, audio_filename):
+        '''加载音频并返回STFT频谱'''
+        # 通过加载函数得到音频数据(np)和采样率
         audio_in, fs = self._load_audio(os.path.join(self._aud_dir, audio_filename))
+        # 快速短时傅立叶变换(STFT)频谱
         audio_spec = self._spectrogram(audio_in)
         return audio_spec
 
@@ -151,8 +178,8 @@ class FeatureClass:
         where sed_label is of dimension [nb_frames, nb_classes] which is 1 for active sound event else zero
         where doa_labels is of dimension [nb_frames, 3*nb_classes], nb_classes each for x, y, z axis,
         """
-
-        se_label = np.zeros((self._max_label_frames, len(self._unique_classes)))
+        # 从描述文件中读取标签，并返回基于分类的声音事件检测（SED）标签和基于回归的方位角（DOA）标签
+        se_label = np.zeros((self._max_label_frames, len(self._unique_classes))) # 类别
         x_label = np.zeros((self._max_label_frames, len(self._unique_classes)))
         y_label = np.zeros((self._max_label_frames, len(self._unique_classes)))
         z_label = np.zeros((self._max_label_frames, len(self._unique_classes)))
@@ -170,6 +197,7 @@ class FeatureClass:
 
     # ------------------------------- EXTRACT FEATURE AND PREPROCESS IT -------------------------------
     def extract_all_feature(self):
+        '''把声音信息处理，保存到.npy文件中'''
         # setting up folders
         self._feat_dir = self.get_unnormalized_feat_dir()
         create_folder(self._feat_dir)
@@ -178,18 +206,24 @@ class FeatureClass:
         print('Extracting spectrogram:')
         print('\t\taud_dir {}\n\t\tdesc_dir {}\n\t\tfeat_dir {}'.format(
             self._aud_dir, self._desc_dir, self._feat_dir))
-
+        
+        # 遍历数据集文件夹下的每一个文件
         for file_cnt, file_name in enumerate(os.listdir(self._aud_dir)):
+            # 得到完整的音频文件路径
             wav_filename = '{}.wav'.format(file_name.split('.')[0])
+            # 加载音频,得到音频的短时傅立叶变换(STFT)频谱
             spect = self._get_spectrogram_for_file(wav_filename)
 
             #extract mel
+            # STFT转换成梅尔频谱
             mel_spect = self._get_mel_spectrogram(spect)
-
+        
             feat = None
             if self._dataset is 'foa':
                 # extract intensity vectors
+                # 从线性频谱中计算声场的强度向量
                 foa_iv = self._get_foa_intensity_vectors(spect)
+                # 梅尔频谱和强度向量进行拼接
                 feat = np.concatenate((mel_spect, foa_iv), axis=-1)
             elif self._dataset is 'mic':
                 # extract gcc
@@ -209,6 +243,7 @@ class FeatureClass:
                 np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
 
     def preprocess_features(self):
+        '''对数据进行归一化预处理'''
         # Setting up folders and filenames
         self._feat_dir = self.get_unnormalized_feat_dir()
         self._feat_dir_norm = self.get_normalized_feat_dir()
@@ -224,13 +259,21 @@ class FeatureClass:
         else:
             print('Estimating weights for normalizing feature files:')
             print('\t\tfeat_dir: {}'.format(self._feat_dir))
-
+            
+            # 创建一个 StandardScaler 对象，用于归一化特征数据
             spec_scaler = preprocessing.StandardScaler()
+            # 遍历特征文件目录中的所有文件
             for file_cnt, file_name in enumerate(os.listdir(self._feat_dir)):
+                # 输出文件计数和文件名
                 print('{}: {}'.format(file_cnt, file_name))
+                # 加载特征文件，使用 NumPy 的 np.load() 函数加载.npy文件
                 feat_file = np.load(os.path.join(self._feat_dir, file_name))
+                # 使用加载的特征文件来更新归一化器的内部状态，以估计特征数据的均值和方差
                 spec_scaler.partial_fit(feat_file)
+                # 删除加载的特征文件，释放内存
                 del feat_file
+            # 使用 joblib 库的 dump() 函数将归一化器对象保存到文件中。
+            # 这个文件包含了特征数据的归一化权重，以便在后续的数据处理中使用。
             joblib.dump(
                 spec_scaler,
                 normalized_features_wts_file
@@ -239,10 +282,14 @@ class FeatureClass:
 
         print('Normalizing feature files:')
         print('\t\tfeat_dir_norm {}'.format(self._feat_dir_norm))
+        # 遍历原始特征文件目录中的所有文件
         for file_cnt, file_name in enumerate(os.listdir(self._feat_dir)):
             print('{}: {}'.format(file_cnt, file_name))
+            # 加载原始特征文件
             feat_file = np.load(os.path.join(self._feat_dir, file_name))
+            # 使用之前估计得到的归一化器 spec_scaler 对特征文件进行归一化处理
             feat_file = spec_scaler.transform(feat_file)
+            # 将归一化后的特征数据保存为.npy文件
             np.save(
                 os.path.join(self._feat_dir_norm, file_name),
                 feat_file
@@ -264,10 +311,11 @@ class FeatureClass:
             if len(file_name)!=26: #checking clean metadata files #TODO this is not required if the dataset is clean
                 continue
             wav_filename = '{}.wav'.format(file_name.split('.')[0])
-            desc_file_polar = self.load_output_format_file(os.path.join(self._desc_dir, file_name))
-            desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
+            desc_file_polar = self.load_output_format_file(os.path.join(self._desc_dir, file_name)) # 读取csv文件的内容，返回了字典
+            desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar) # 极坐标格式的数据转换成笛卡尔坐标格式
             label_mat = self.get_labels_for_file(desc_file)
             print('{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
+            # 矩阵格式(标签,x,y,z)
             np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
 
     # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
@@ -384,6 +432,7 @@ class FeatureClass:
         return _output_dict
 
     def convert_output_format_polar_to_cartesian(self, in_dict):
+        # 极坐标格式的数据转换成笛卡尔坐标格式
         out_dict = {}
         for frame_cnt in in_dict.keys():
             if frame_cnt not in out_dict:

@@ -36,17 +36,17 @@ def plot_func(plot_data, hop_len_s, ind, plot_x_ax=False, plot_y_ax=False):
 
     if not plot_y_ax:
         plot.gca().axes.set_yticklabels([])
-# --------------------------------- MAIN SCRIPT STARTS HERE -----------------------------------------
+# --------------------------------- MAIN SCRIPT STARTS HERE ----------------------------------------- 
 params = parameter.get_params()
 
 # output format file to visualize
-pred = os.path.join(params['dcase_dir'], '2_mic_dev/fold1_room1_mix006_ov1.csv')
+pred = os.path.join(params['dcase_dir'], '1_foa_dev/fold1_room1_mix001_ov1.csv')
 
 # path of reference audio directory for visualizing the spectrogram and description directory for
 # visualizing the reference
 # Note: The code finds out the audio filename from the predicted filename automatically
 ref_dir = os.path.join(params['dataset_dir'], 'metadata_dev')
-aud_dir = os.path.join(params['dataset_dir'], 'mic_dev')
+aud_dir = os.path.join(params['dataset_dir'], 'foa_dev')
 
 # load the predicted output format
 feat_cls = cls_feature_class.FeatureClass(params)

@@ -70,14 +70,14 @@ class DataGenerator(object):
         )
 
     def get_data_sizes(self):
-        feat_shape = (self._batch_size, self._nb_ch, self._feature_seq_len, self._nb_mel_bins)
+        feat_shape = (self._batch_size, self._nb_ch, self._feature_seq_len, self._nb_mel_bins) # 特征的形状
         if self._is_eval:
             label_shape = None
         else:
             label_shape = [
                 (self._batch_size, self._label_seq_len, self._nb_classes),
                 (self._batch_size, self._label_seq_len, self._nb_classes*3)
-            ]
+            ] # 标签的形状
         return feat_shape, label_shape
 
     def get_total_batches_in_data(self):
@@ -93,6 +93,7 @@ class DataGenerator(object):
                     self._filenames_list.append(filename)
 
         temp_feat = np.load(os.path.join(self._feat_dir, self._filenames_list[0]))
+        # 
         self._nb_frames_file = temp_feat.shape[0]
         self._nb_ch = temp_feat.shape[1] // self._nb_mel_bins
 

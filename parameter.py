@@ -6,25 +6,27 @@
 
 def get_params(argv='1'):
     print("SET: {}".format(argv))
-    # ########### default parameters ##############
+    # ########### default parameters ############## 
     params = dict(
-        quick_test=True,     # To do quick test. Trains/test on small subset of dataset, and # of epochs
+        # quick_test=True,     # To do quick test. Trains/test on small subset of dataset, and # of epochs
+        quick_test=False,
 
         # INPUT PATH
-        dataset_dir='/scratch/asignal/sharath/DCASE2020_SELD_dataset/',  # Base folder containing the foa/mic and metadata folders
+        dataset_dir='',  # Base folder containing the foa/mic and metadata folders
 
         # OUTPUT PATH
-        feat_label_dir='/scratch/asignal/sharath/DCASE2020_SELD_dataset/feat_label/',  # Directory to dump extracted features and labels
-        model_dir='models/',   # Dumps the trained models and training curves in this folder
+        feat_label_dir='feat_label/',  # Directory to dump extracted features and labels
+        model_dir='seld-dcase2020/models/',   # Dumps the trained models and training curves in this folder
         dcase_output=True,     # If true, dumps the results recording-wise in 'dcase_dir' path.
                                # Set this true after you have finalized your model, save the output, and submit
-        dcase_dir='results/',  # Dumps the recording-wise network output in this folder
+        dcase_dir='seld-dcase2020/results/',  # Dumps the recording-wise network output in this folder
 
         # DATASET LOADING PARAMETERS
         mode='dev',         # 'dev' - development or 'eval' - evaluation dataset
         dataset='foa',       # 'foa' - ambisonic or 'mic' - microphone signals
 
-        #FEATURE PARAMS
+        #FEATURE PARAMS（特性参数）
+        # 采样率
         fs=24000,
         hop_len_s=0.02,
         label_hop_len_s=0.1,
@@ -33,10 +35,11 @@ def get_params(argv='1'):
 
         # DNN MODEL PARAMETERS
         label_sequence_length=60,        # Feature sequence length
-        batch_size=256,              # Batch size
-        dropout_rate=0,             # Dropout rate, constant for all layers
-        nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer
+        batch_size=64,              # Batch size
+        dropout_rate=0,             # Dropout rate, constant for all layers 丢失率，所有层都是常数
+        nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer CNN节点数，每层为常数
         f_pool_size=[4, 4, 2],      # CNN frequency pooling, length of list = number of CNN layers, list value = pooling per layer
+                                    # CNN频率池化，列表长度= CNN层数，列表值=每层池化
 
         rnn_size=[128, 128],        # RNN contents, length of list = number of layers, list value = number of nodes
         fnn_size=[128],             # FNN contents, length of list = number of layers, list value = number of nodes
@@ -51,7 +54,8 @@ def get_params(argv='1'):
     )
     feature_label_resolution = int(params['label_hop_len_s'] // params['hop_len_s'])
     params['feature_sequence_length'] = params['label_sequence_length'] * feature_label_resolution
-    params['t_pool_size'] = [feature_label_resolution, 1, 1]     # CNN time pooling
+    #params['t_pool_size'] = [feature_label_resolution, 1, 1]     # CNN time pooling
+    params['t_pool_size'] = [5, 1, 1] 
     params['patience'] = int(params['nb_epochs'])     # Stop training if patience is reached
 
     params['unique_classes'] = {

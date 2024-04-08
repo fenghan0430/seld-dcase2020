@@ -1,6 +1,7 @@
 #
 # A wrapper script that trains the SELDnet. The training stops when the early stopping metric - SELD error stops improving.
-#
+
+# need to install: librosa
 
 import os
 import sys
@@ -17,7 +18,7 @@ from IPython import embed
 
 
 def collect_test_labels(_data_gen_test, _data_out, _nb_classes, quick_test):
-    # Collecting ground truth for test data
+    # Collecting ground truth for test data 为测试数据收集地面真相
     nb_batch = 2 if quick_test else _data_gen_test.get_total_batches_in_data()
 
     batch_size = _data_out[0][0]
@@ -87,6 +88,7 @@ def main(argv):
                               (default) 1
 
     """
+    # 输入报错
     print(argv)
     if len(argv) != 3:
         print('\n\n')
@@ -100,15 +102,15 @@ def main(argv):
         print('-------------------------------------------------------------------------------------------------------')
         print('\n\n')
 
-    # use parameter set defined by user
+    # 使用用户自定义的参数集
     task_id = '1' if len(argv) < 2 else argv[1]
     params = parameter.get_params(task_id)
 
     job_id = 1 if len(argv) < 3 else argv[-1]
 
     feat_cls = cls_feature_class.FeatureClass(params)
-    train_splits, val_splits, test_splits = None, None, None
-
+    train_splits, val_splits, test_splits = None, None, None # 分割数据集
+    # 通过房间号分割数据集
     if params['mode'] == 'dev':
         test_splits = [1]
         val_splits = [2]
@@ -126,7 +128,7 @@ def main(argv):
         print('------------------------------------      SPLIT {}   -----------------------------------------------'.format(split))
         print('---------------------------------------------------------------------------------------------------')
 
-        # Unique name for the run
+        # Unique name for the run 运行的唯一名称
         cls_feature_class.create_folder(params['model_dir'])
         unique_name = '{}_{}_{}_{}_split{}'.format(
             task_id, job_id, params['dataset'], params['mode'], split
@@ -135,7 +137,7 @@ def main(argv):
         model_name = '{}_model.h5'.format(unique_name)
         print("unique_name: {}\n".format(unique_name))
 
-        # Load train and validation data
+        # Load train and validation data 加载训练和验证数据
         print('Loading training dataset:')
         data_gen_train = cls_data_generator.DataGenerator(
             params=params, split=train_splits[split_cnt]
@@ -146,24 +148,31 @@ def main(argv):
             params=params, split=val_splits[split_cnt], shuffle=False
         )
 
-        # Collect the reference labels for validation data
+        # Collect the reference labels for validation data 收集验证数据的参考标签
         data_in, data_out = data_gen_train.get_data_sizes()
         print('FEATURES:\n\tdata_in: {}\n\tdata_out: {}\n'.format(data_in, data_out))
-
+        
+        
         nb_classes = data_gen_train.get_nb_classes()
         gt = collect_test_labels(data_gen_val, data_out, nb_classes, params['quick_test'])
         sed_gt = evaluation_metrics.reshape_3Dto2D(gt[0])
         doa_gt = evaluation_metrics.reshape_3Dto2D(gt[1])
-
+        
         print('MODEL:\n\tdropout_rate: {}\n\tCNN: nb_cnn_filt: {}, f_pool_size{}, t_pool_size{}\n\trnn_size: {}, fnn_size: {}\n\tdoa_objective: {}\n'.format(
             params['dropout_rate'], params['nb_cnn2d_filt'], params['f_pool_size'], params['t_pool_size'], params['rnn_size'],
             params['fnn_size'], params['doa_objective']))
 
         print('Using loss weights : {}'.format(params['loss_weights']))
-        model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
-                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
-                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
-                                      weights=params['loss_weights'], doa_objective=params['doa_objective'])
+        model = keras_model.get_model(data_in=data_in,
+                                      data_out=data_out,
+                                      dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'],
+                                      f_pool_size=params['f_pool_size'],
+                                      t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'],
+                                      fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'],
+                                      doa_objective=params['doa_objective'])
         best_seld_metric = 99999
         best_epoch = -1
         patience_cnt = 0
@@ -178,7 +187,6 @@ def main(argv):
         # start training
         for epoch_cnt in range(nb_epoch):
             start = time.time()
-
             # train once per epoch
             hist = model.fit_generator(
                 generator=data_gen_train.generate(),
