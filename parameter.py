@@ -12,14 +12,14 @@ def get_params(argv='1'):
         quick_test=False,
 
         # INPUT PATH
-        dataset_dir='',  # Base folder containing the foa/mic and metadata folders
+        dataset_dir='../datasets',  # Base folder containing the foa/mic and metadata folders
 
         # OUTPUT PATH
-        feat_label_dir='feat_label/',  # Directory to dump extracted features and labels
-        model_dir='seld-dcase2020/models/',   # Dumps the trained models and training curves in this folder
+        feat_label_dir='../datasets/feat_label/',  # Directory to dump extracted features and labels
+        model_dir='models/',   # Dumps the trained models and training curves in this folder
         dcase_output=True,     # If true, dumps the results recording-wise in 'dcase_dir' path.
                                # Set this true after you have finalized your model, save the output, and submit
-        dcase_dir='seld-dcase2020/results/',  # Dumps the recording-wise network output in this folder
+        dcase_dir='results/',  # Dumps the recording-wise network output in this folder
 
         # DATASET LOADING PARAMETERS
         mode='dev',         # 'dev' - development or 'eval' - evaluation dataset
