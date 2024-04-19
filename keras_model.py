@@ -70,9 +70,9 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         model.compile(optimizer=Adam(), loss=['binary_crossentropy', masked_mse], loss_weights=weights)
     else:
         print('ERROR: Unknown doa_objective: {}'.format(doa_objective))
-        exit()
+        # exit()
     model.summary()
-    exit()
+    # exit()
     return model
 
 

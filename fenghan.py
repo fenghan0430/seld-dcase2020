@@ -51,20 +51,21 @@ def create_crn_model(data_in, data_out):
     
     print(freq_conv)
     
-    spec_rnn = Reshape((data_out[0][-2], -1))(freq_conv)
-    for nb_rnn_filt in rnn_size:
-        spec_rnn = Bidirectional(
-            GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
-                return_sequences=True),
-            merge_mode='mul',
-            name="doit"
-        )(spec_rnn)
+    # spec_rnn = Reshape((data_out[0][-2], -1))(freq_conv)
+    # for nb_rnn_filt in rnn_size:
+    #     spec_rnn = Bidirectional(
+    #         GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+    #             return_sequences=True),
+    #         merge_mode='mul',
+    #         name="doit"
+    #     )(spec_rnn)
     
-    # lstm = Reshape((data_out[0][-2], -1))(freq_conv)
-    # # lstm = tf.expand_dims(lstm, axis=2)
+    lstm = Reshape((data_out[0][-2], -1))(freq_conv)
+    # lstm = tf.expand_dims(lstm, axis=2)
     # lstm = Bidirectional(LSTM(128, return_sequences=True), merge_mode='mul')(lstm)
-    # lstm = LayerNormalization()(lstm)
-    # lstm = Dropout(0.2)(lstm)
+    lstm = LSTM(128, return_sequences=True)(lstm)
+    lstm = LayerNormalization()(lstm)
+    lstm = Dropout(0.2)(lstm)
     
     _out = lstm # 全连接的输入，测试时使用
     
