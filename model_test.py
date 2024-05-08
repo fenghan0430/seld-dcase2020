@@ -5,6 +5,7 @@ import cls_data_generator
 from metrics import evaluation_metrics, SELD_evaluation_metrics
 import os
 import numpy as np
+import tensorflow as tf
 
 task_id = "1"
 params = parameter.get_params()
@@ -55,6 +56,8 @@ pred_test = model.predict_generator(
     steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
     verbose=2
 )
+
+    
 
 test_sed_pred = evaluation_metrics.reshape_3Dto2D(pred_test[0]) > 0.5
 test_doa_pred = evaluation_metrics.reshape_3Dto2D(pred_test[1] if params['doa_objective'] is 'mse' else pred_test[1][:, :, nb_classes:])

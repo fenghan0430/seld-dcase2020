@@ -12,10 +12,10 @@ def get_params(argv='1'):
         quick_test=False,
 
         # INPUT PATH
-        dataset_dir='../datasets',  # Base folder containing the foa/mic and metadata folders
+        dataset_dir='../mic_dataset/',  # Base folder containing the foa/mic and metadata folders
 
         # OUTPUT PATH
-        feat_label_dir='../datasets/feat_label/',  # Directory to dump extracted features and labels
+        feat_label_dir='../mic_dataset/feat_label/',  # Directory to dump extracted features and labels
         model_dir='models/',   # Dumps the trained models and training curves in this folder
         dcase_output=True,     # If true, dumps the results recording-wise in 'dcase_dir' path.
                                # Set this true after you have finalized your model, save the output, and submit
@@ -23,7 +23,7 @@ def get_params(argv='1'):
 
         # DATASET LOADING PARAMETERS
         mode='dev',         # 'dev' - development or 'eval' - evaluation dataset
-        dataset='foa',       # 'foa' - ambisonic or 'mic' - microphone signals
+        dataset='mic',       # 'foa' - ambisonic or 'mic' - microphone signals
 
         #FEATURE PARAMS（特性参数）
         # 采样率

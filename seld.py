@@ -349,7 +349,8 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main(sys.argv))
-    except (ValueError, IOError) as e:
-        sys.exit(e)
+    for i89778 in range(100):
+        try:
+            sys.exit(main(sys.argv))
+        except (ValueError, IOError) as e:
+            sys.exit(e)
