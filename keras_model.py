@@ -2,15 +2,16 @@
 # The SELDnet architecture
 #
 
-from keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate
-from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
-from keras.layers.recurrent import GRU
-from keras.layers.normalization import BatchNormalization
-from keras.models import Model
-from keras.layers.wrappers import TimeDistributed
-from keras.optimizers import Adam
-from keras.models import load_model
-import keras
+from keras._tf_keras.keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate
+from keras._tf_keras.keras.layers import Dense, Activation, Dropout, Reshape, Permute
+from keras._tf_keras.keras.layers import GRU
+from keras._tf_keras.keras.layers import BatchNormalization
+from keras._tf_keras.keras.models import Model
+from keras._tf_keras.keras.layers import TimeDistributed
+from keras._tf_keras.keras.optimizers import Adam
+from keras._tf_keras.keras.models import load_model
+from keras._tf_keras import keras
+import tensorflow as tf
 keras.backend.set_image_data_format('channels_first')
 from IPython import embed
 import numpy as np
@@ -36,9 +37,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     print(spec_cnn)
     # RNN
     spec_rnn = Reshape((data_out[0][-2], -1))(spec_cnn)
+    # spec_rnn = Reshape((60, -1))(spec_cnn)
     for nb_rnn_filt in rnn_size:
         spec_rnn = Bidirectional(
-            GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+            keras.layers.GRU(nb_rnn_filt, activation='sigmoid', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                 return_sequences=True),
             merge_mode='mul'
         )(spec_rnn)
