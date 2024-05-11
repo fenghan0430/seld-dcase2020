@@ -24,4 +24,5 @@ def interpolateDirections(dir1_xyz, dir2_xyz, N):
 		dirn_xyz = dir1_xyz * math.cos(x) + np.cross(purpvec12,dir1_xyz)*math.sin(x) + purpvec12.dot(np.cross(purpvec12,dir1_xyz))*(1-math.cos(x))
 		interp_dirs_xyz.append(dirn_xyz)
 	
-        return np.array(interp_dirs_xyz)
+        # return np.array(interp_dirs_xyz)
+		return np.array(interp_dirs_xyz)

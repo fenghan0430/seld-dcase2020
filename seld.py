@@ -7,6 +7,7 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plot
+import tensorflow as tf
 import cls_feature_class
 import cls_data_generator
 from metrics import evaluation_metrics, SELD_evaluation_metrics
@@ -184,21 +185,104 @@ def main(argv):
         sed_metric = np.zeros((nb_epoch, 2))
         new_metric = np.zeros((nb_epoch, 4))
 
+        # # start training
+        # for epoch_cnt in range(nb_epoch):
+        #     start = time.time()
+        #     # train once per epoch
+        #     hist = model.fit_generator(
+        #         generator=data_gen_train.generate(),
+        #         steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
+        #         epochs=params['epochs_per_fit'],
+        #         verbose=2,
+        #     )
+        #     tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
+
+        #     # predict once per peoch
+        #     pred = model.predict_generator(
+        #         generator=data_gen_val.generate(),
+        #         steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
+        #         verbose=2
+        #     )
+
+        #     sed_pred = evaluation_metrics.reshape_3Dto2D(pred[0]) > 0.5
+        #     doa_pred = evaluation_metrics.reshape_3Dto2D(pred[1] if params['doa_objective'] is 'mse' else pred[1][:, :, nb_classes:])
+
+        #     # Calculate the DCASE 2019 metrics - Detection-only and Localization-only scores
+        #     sed_metric[epoch_cnt, :] = evaluation_metrics.compute_sed_scores(sed_pred, sed_gt, data_gen_val.nb_frames_1s())
+        #     doa_metric[epoch_cnt, :] = evaluation_metrics.compute_doa_scores_regr_xyz(doa_pred, doa_gt, sed_pred, sed_gt)
+        #     seld_metric[epoch_cnt] = evaluation_metrics.early_stopping_metric(sed_metric[epoch_cnt, :], doa_metric[epoch_cnt, :])
+
+        #     # Calculate the DCASE 2020 metrics - Location-aware detection and Class-aware localization scores
+        #     cls_new_metric = SELD_evaluation_metrics.SELDMetrics(nb_classes=data_gen_val.get_nb_classes(), doa_threshold=params['lad_doa_thresh'])
+        #     pred_dict = feat_cls.regression_label_format_to_output_format(
+        #         sed_pred, doa_pred
+        #     )
+        #     gt_dict = feat_cls.regression_label_format_to_output_format(
+        #         sed_gt, doa_gt
+        #     )
+
+        #     pred_blocks_dict = feat_cls.segment_labels(pred_dict, sed_pred.shape[0])
+        #     gt_blocks_dict = feat_cls.segment_labels(gt_dict, sed_gt.shape[0])
+
+        #     cls_new_metric.update_seld_scores_xyz(pred_blocks_dict, gt_blocks_dict)
+        #     new_metric[epoch_cnt, :] = cls_new_metric.compute_seld_scores()
+        #     new_seld_metric[epoch_cnt] = evaluation_metrics.early_stopping_metric(new_metric[epoch_cnt, :2], new_metric[epoch_cnt, 2:])
+
+        #     # Visualize the metrics with respect to epochs
+        #     plot_functions(unique_name, tr_loss, sed_metric, doa_metric, seld_metric, new_metric, new_seld_metric)
+
+        #     patience_cnt += 1
+        #     if new_seld_metric[epoch_cnt] < best_seld_metric:
+        #         best_seld_metric = new_seld_metric[epoch_cnt]
+        #         best_epoch = epoch_cnt
+        #         model.save(model_name)
+        #         patience_cnt = 0
+
+        #     print(
+        #         'epoch_cnt: {}, time: {:0.2f}s, tr_loss: {:0.2f}, '
+        #         '\n\t\t DCASE2019 SCORES: ER: {:0.2f}, F: {:0.1f}, DE: {:0.1f}, FR:{:0.1f}, seld_score: {:0.2f}, ' 
+        #         '\n\t\t DCASE2020 SCORES: ER: {:0.2f}, F: {:0.1f}, DE: {:0.1f}, DE_F:{:0.1f}, seld_score (early stopping score): {:0.2f}, '
+        #         'best_seld_score: {:0.2f}, best_epoch : {}\n'.format(
+        #             epoch_cnt, time.time() - start, tr_loss[epoch_cnt],
+        #             sed_metric[epoch_cnt, 0], sed_metric[epoch_cnt, 1]*100,
+        #             doa_metric[epoch_cnt, 0], doa_metric[epoch_cnt, 1]*100, seld_metric[epoch_cnt],
+        #             new_metric[epoch_cnt, 0], new_metric[epoch_cnt, 1]*100,
+        #             new_metric[epoch_cnt, 2], new_metric[epoch_cnt, 3]*100,
+        #             new_seld_metric[epoch_cnt], best_seld_metric, best_epoch
+        #         )
+        #     )
+        #     if patience_cnt > params['patience']:
+        #         break
         # start training
+        
+        output_signature = (
+            tf.TensorSpec(shape=(64, 10, 300, 64), dtype=tf.float32),  # 根据feat的实际形状调整
+            (
+                tf.TensorSpec(shape=(64, 60, 14), dtype=tf.float32),  # 根据SED标签的实际形状调整
+                tf.TensorSpec(shape=(64, 60, 42), dtype=tf.float32)   # 根据DOA标签的实际形状调整
+            )
+        )
+
+        
+        train_dataset = tf.data.Dataset.from_generator(
+            generator=data_gen_train.generate,
+            output_signature=output_signature
+            )
+        
         for epoch_cnt in range(nb_epoch):
             start = time.time()
             # train once per epoch
-            hist = model.fit_generator(
-                generator=data_gen_train.generate(),
+            hist = model.fit(
+                train_dataset,  # 数据生成器
                 steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
                 epochs=params['epochs_per_fit'],
                 verbose=2,
             )
             tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
 
-            # predict once per peoch
-            pred = model.predict_generator(
-                generator=data_gen_val.generate(),
+            # predict once per epoch
+            pred = model.predict(
+                train_dataset,
                 steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
                 verbose=2
             )
@@ -252,6 +336,7 @@ def main(argv):
             )
             if patience_cnt > params['patience']:
                 break
+
 
         avg_scores_val.append([new_metric[best_epoch, 0], new_metric[best_epoch, 1], new_metric[best_epoch, 2],
                                new_metric[best_epoch, 3], best_seld_metric])

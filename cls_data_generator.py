@@ -27,7 +27,7 @@ class DataGenerator(object):
 
         self._filenames_list = list()
         self._nb_frames_file = 0     # Using a fixed number of frames in feat files. Updated in _get_label_filenames_sizes()
-        self._nb_mel_bins = self._feat_cls.get_nb_mel_bins()
+        self._nb_mel_bins = self._feat_cls.get_nb_mel_bins() #值为64
         self._nb_ch = None
         self._label_len = None  # total length of label - DOA + SED
         self._doa_len = None    # DOA label length
@@ -160,6 +160,7 @@ class DataGenerator(object):
 
                     # load feat and label to circular buffer. Always maintain atleast one batch worth feat and label in the
                     # circular buffer. If not keep refilling it.
+                    # 读取预处理过后的特征和标签
                     while len(self._circ_buf_feat) < self._feature_batch_seq_len:
                         temp_feat = np.load(os.path.join(self._feat_dir, self._filenames_list[file_cnt]))
                         temp_label = np.load(os.path.join(self._label_dir, self._filenames_list[file_cnt]))
@@ -185,8 +186,10 @@ class DataGenerator(object):
                         file_cnt = file_cnt + 1
 
                     # Read one batch size from the circular buffer
-                    feat = np.zeros((self._feature_batch_seq_len, self._nb_mel_bins * self._nb_ch))
-                    label = np.zeros((self._label_batch_seq_len, self._label_len))
+                    # 首先新建两个矩阵，用来存数据
+                    feat = np.zeros((self._feature_batch_seq_len, self._nb_mel_bins * self._nb_ch)) # _nb_mel_bins=64, _nb_ch=10
+                    label = np.zeros((self._label_batch_seq_len, self._label_len)) # _label_len=56
+                    # 从temp_feat中弹出数据，然后加载到一个批次中去
                     for j in range(self._feature_batch_seq_len):
                         feat[j, :] = self._circ_buf_feat.popleft()
                     for j in range(self._label_batch_seq_len):
@@ -205,6 +208,9 @@ class DataGenerator(object):
                     yield feat, label
 
     def _split_in_seqs(self, data, _seq_len):
+        """这段代码定义了一个名为 _split_in_seqs 的函数，
+        其主要目的是将输入的数据 data 按照指定的序列长度 _seq_len 进行切分。
+        这个过程将确保所有切分后的序列长度都是一致的。"""
         if len(data.shape) == 1:
             if data.shape[0] % _seq_len:
                 data = data[:-(data.shape[0] % _seq_len), :]

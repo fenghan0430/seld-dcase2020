@@ -46,16 +46,16 @@ def get_params(argv='1'):
         loss_weights=[1., 1000.],     # [sed, doa] weight for scaling the DNN outputs
         nb_epochs=50,               # Train for maximum epochs
         epochs_per_fit=5,           # Number of epochs per fit
-        doa_objective='masked_mse',     # supports: mse, masked_mse. mse- original seld approach; masked_mse - dcase 2020 approach
+        doa_objective='mse',     # supports: mse, masked_mse. mse- original seld approach; masked_mse - dcase 2020 approach
         
         #METRIC PARAMETERS
         lad_doa_thresh=20
        
     )
-    feature_label_resolution = int(params['label_hop_len_s'] // params['hop_len_s'])
-    params['feature_sequence_length'] = params['label_sequence_length'] * feature_label_resolution
-    #params['t_pool_size'] = [feature_label_resolution, 1, 1]     # CNN time pooling
-    params['t_pool_size'] = [5, 1, 1] 
+    feature_label_resolution = int(params['label_hop_len_s'] // params['hop_len_s']) # 5
+    params['feature_sequence_length'] = params['label_sequence_length'] * feature_label_resolution # 300
+    params['t_pool_size'] = [feature_label_resolution, 1, 1]     # CNN time pooling
+    # params['t_pool_size'] = [5, 1, 1] 
     params['patience'] = int(params['nb_epochs'])     # Stop training if patience is reached
 
     params['unique_classes'] = {

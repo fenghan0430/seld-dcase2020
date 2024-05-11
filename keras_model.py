@@ -2,28 +2,41 @@
 # The SELDnet architecture
 #
 
-from keras._tf_keras.keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate
-from keras._tf_keras.keras.layers import Dense, Activation, Dropout, Reshape, Permute
-from keras._tf_keras.keras.layers import GRU
-from keras._tf_keras.keras.layers import BatchNormalization
-from keras._tf_keras.keras.models import Model
-from keras._tf_keras.keras.layers import TimeDistributed
-from keras._tf_keras.keras.optimizers import Adam
-from keras._tf_keras.keras.models import load_model
-from keras._tf_keras import keras
+from keras.api._v2.keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate
+from keras.api._v2.keras.layers import Dense, Activation, Dropout, Reshape, Permute
+from keras.api._v2.keras.layers import GRU
+from keras.api._v2.keras.layers import BatchNormalization
+from keras.api._v2.keras.models import Model
+from keras.api._v2.keras.layers import TimeDistributed
+from keras.api._v2.keras.optimizers import Adam
+from keras.api._v2.keras.models import load_model
+from keras.api._v2 import keras
 import tensorflow as tf
-keras.backend.set_image_data_format('channels_first')
 from IPython import embed
 import numpy as np
 
-
-def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
-              rnn_size, fnn_size, weights, doa_objective):
-    
+def get_model(
+    data_in=(64, 10, 300, 64),
+    data_out=[(64, 60, 14), (64, 60, 42)],
+    dropout_rate=0,
+    nb_cnn2d_filt=64,
+    f_pool_size=[4, 4, 2],
+    t_pool_size=[5,1,1],
+    rnn_size=[128, 128],
+    fnn_size=[128],
+    weights=[1., 1000.],
+    doa_objective="mse"
+    ):
+    # data_in is: (64, 10, 300, 64)注意是通道优先
+    # data_out is: [(64, 60, 14), (64, 60, 42)]
     print ("data_in is:", data_in)
     print ("data_out is:", data_out)
+    print ("t_pool_size:", t_pool_size)
+    
     # model definition
-    spec_start = Input(shape=(data_in[-3], data_in[-2], data_in[-1]))
+    # 源代码是通道优先 keras.backend.set_image_data_format('channels_first')
+    # 在TF2中这种格式构建rnn那儿一直报错，故修改成了更加常用的格式: 通道最后
+    spec_start = Input(shape=(data_in[-2], data_in[-1], data_in[-3]))
 
     # CNN
     spec_cnn = spec_start
@@ -34,23 +47,22 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = MaxPooling2D(pool_size=(t_pool_size[i], f_pool_size[i]))(spec_cnn)
         spec_cnn = Dropout(dropout_rate)(spec_cnn)
     spec_cnn = Permute((2, 1, 3))(spec_cnn)
-    print(spec_cnn)
+
     # RNN
     spec_rnn = Reshape((data_out[0][-2], -1))(spec_cnn)
     # spec_rnn = Reshape((60, -1))(spec_cnn)
     for nb_rnn_filt in rnn_size:
         spec_rnn = Bidirectional(
-            keras.layers.GRU(nb_rnn_filt, activation='sigmoid', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+            GRU(nb_rnn_filt, activation='sigmoid', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                 return_sequences=True),
             merge_mode='mul'
         )(spec_rnn)
-
+    
     # FC - DOA
     doa = spec_rnn
     for nb_fnn_filt in fnn_size:
         doa = TimeDistributed(Dense(nb_fnn_filt))(doa)
         doa = Dropout(dropout_rate)(doa)
-
     doa = TimeDistributed(Dense(data_out[1][-1]))(doa)
     doa = Activation('tanh', name='doa_out')(doa)
 
@@ -72,11 +84,8 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         model.compile(optimizer=Adam(), loss=['binary_crossentropy', masked_mse], loss_weights=weights)
     else:
         print('ERROR: Unknown doa_objective: {}'.format(doa_objective))
-        # exit()
     model.summary()
-    # exit()
     return model
-
 
 def masked_mse(y_gt, model_out):
     # SED mask: Use only the predicted DOAs when gt SED > 0.5
