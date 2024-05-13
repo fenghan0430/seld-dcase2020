@@ -1,19 +1,12 @@
-#
-# The SELDnet architecture
-#
-
-from keras.api._v2.keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate
-from keras.api._v2.keras.layers import Dense, Activation, Dropout, Reshape, Permute
-from keras.api._v2.keras.layers import GRU
-from keras.api._v2.keras.layers import BatchNormalization
-from keras.api._v2.keras.models import Model
-from keras.api._v2.keras.layers import TimeDistributed
+from keras.api._v2.keras.layers import (Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate,
+                                        Dense, Activation, Dropout, Reshape, Permute, GRU, BatchNormalization,
+                                        TimeDistributed)
+from keras.api._v2.keras.models import Model, load_model
 from keras.api._v2.keras.optimizers import Adam
-from keras.api._v2.keras.models import load_model
 from keras.api._v2 import keras
 import tensorflow as tf
-from IPython import embed
 import numpy as np
+from IPython import embed
 
 def get_model(
     data_in=(64, 10, 300, 64),
@@ -27,13 +20,18 @@ def get_model(
     weights=[1., 1000.],
     doa_objective="mse"
     ):
+    """
+    构建seld-net模型的函数
+    模型的相关参数可以在调用这个函数的时候修改
+    默认的参数来源是旧项目的设置
+    """
+    
     # data_in is: (64, 10, 300, 64)注意是通道优先
     # data_out is: [(64, 60, 14), (64, 60, 42)]
     print ("data_in is:", data_in)
     print ("data_out is:", data_out)
     print ("t_pool_size:", t_pool_size)
     
-    # model definition
     # 源代码是通道优先 keras.backend.set_image_data_format('channels_first')
     # 在TF2中这种格式构建rnn那儿一直报错，故修改成了更加常用的格式: 通道最后
     spec_start = Input(shape=(data_in[-2], data_in[-1], data_in[-3]))
@@ -50,7 +48,6 @@ def get_model(
 
     # RNN
     spec_rnn = Reshape((data_out[0][-2], -1))(spec_cnn)
-    # spec_rnn = Reshape((60, -1))(spec_cnn)
     for nb_rnn_filt in rnn_size:
         spec_rnn = Bidirectional(
             GRU(nb_rnn_filt, activation='sigmoid', dropout=dropout_rate, recurrent_dropout=dropout_rate,
@@ -105,6 +102,3 @@ def load_seld_model(model_file, doa_objective):
     else:
         print('ERROR: Unknown doa objective: {}'.format(doa_objective))
         exit()
-
-
-
