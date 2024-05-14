@@ -9,8 +9,8 @@ import numpy as np
 from IPython import embed
 
 def get_model(
-    data_in=(64, 10, 300, 64),
-    data_out=[(64, 60, 14), (64, 60, 42)],
+    data_in=(64, 300, 64, 10),
+    data_out=[(64, 60, 14), (64, 60, 42)], # sed, doa
     dropout_rate=0,
     nb_cnn2d_filt=64,
     f_pool_size=[4, 4, 2],
@@ -18,7 +18,7 @@ def get_model(
     rnn_size=[128, 128],
     fnn_size=[128],
     weights=[1., 1000.],
-    doa_objective="mse"
+    doa_objective="masked_mse"
     ):
     """
     构建seld-net模型的函数
@@ -34,7 +34,7 @@ def get_model(
     
     # 源代码是通道优先 keras.backend.set_image_data_format('channels_first')
     # 在TF2中这种格式构建rnn那儿一直报错，故修改成了更加常用的格式: 通道最后
-    spec_start = Input(shape=(data_in[-2], data_in[-1], data_in[-3]))
+    spec_start = Input(shape=(data_in[1], data_in[2], data_in[3]))
 
     # CNN
     spec_cnn = spec_start
