@@ -15,7 +15,8 @@ def set_gpu_memory_mode():
 set_gpu_memory_mode()
 
 batch_size = 256
-epochs     = 150
+epochs     = 1000
+save_name = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 # 加载数据集
 feat = np.load("loaded_feat.npy")
@@ -39,11 +40,11 @@ print("数据集设置完成")
 
 # 使用TensorBoard
 # 设置日志目录
-log_dir = "logs/fit" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+log_dir = "logs/fit" + save_name
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 model = get_model()
 
 model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[tensorboard_callback])
 
-model.save(f'seldnet-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}')
+model.save(f'seldnet-{save_name}')
