@@ -18,7 +18,7 @@ def get_model(
     rnn_size=[128, 128],
     fnn_size=[128],
     weights=[1., 1000.],
-    doa_objective="masked_mse"
+    doa_objective="mse"
     ):
     """
     构建seld-net模型的函数
@@ -90,8 +90,15 @@ def masked_mse(y_gt, model_out):
     sed_out = keras.backend.repeat_elements(sed_out, 3, -1)
     sed_out = keras.backend.cast(sed_out, 'float32')
 
-    # Use the mask to computed mse now. Normalize with the mask weights #TODO fix this hardcoded value of number of classes
-    return keras.backend.sqrt(keras.backend.sum(keras.backend.square(y_gt[:, :, 14:] - model_out[:, :, 14:]) * sed_out))/keras.backend.sum(sed_out)
+    a = y_gt[:, :, 14:] - model_out[:, :, 14:]
+    a = keras.backend.square(a)
+    a = a * sed_out
+    a = keras.backend.sum(a)
+    a = keras.backend.sqrt(a)
+    a = a / keras.backend.sum(sed_out)
+    
+    return a
+    # return keras.backend.sqrt(keras.backend.sum(keras.backend.square(y_gt[:, :, 14:] - model_out[:, :, 14:]) * sed_out))/keras.backend.sum(sed_out)
 
 
 def load_seld_model(model_file, doa_objective):
