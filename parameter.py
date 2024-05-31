@@ -46,7 +46,7 @@ def get_params(argv='1'):
         loss_weights=[1., 1000.],     # [sed, doa] weight for scaling the DNN outputs
         nb_epochs=50,               # Train for maximum epochs
         epochs_per_fit=5,           # Number of epochs per fit
-        doa_objective='mse',     # supports: mse, masked_mse. mse- original seld approach; masked_mse - dcase 2020 approach
+        doa_objective='masked_mse',     # supports: mse, masked_mse. mse- original seld approach; masked_mse - dcase 2020 approach
         
         #METRIC PARAMETERS
         lad_doa_thresh=20

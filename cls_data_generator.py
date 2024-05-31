@@ -46,8 +46,6 @@ class DataGenerator(object):
             self._nb_total_batches = int(np.floor((len(self._filenames_list) * self._nb_frames_file /
                                                float(self._feature_batch_seq_len))))
 
-        # self._dummy_feat_vec = np.ones(self._feat_len.shape) *
-
         print(
             '\tDatagen_mode: {}, nb_files: {}, nb_classes:{}\n'
             '\tnb_frames_file: {}, feat_len: {}, nb_ch: {}, label_len:{}\n'.format(
@@ -171,6 +169,7 @@ class DataGenerator(object):
                             self._circ_buf_label.append(l_row)
 
                         # If self._per_file is True, this returns the sequences belonging to a single audio recording
+                        # 忽略这个if，因为self._per_file的值为false
                         if self._per_file:
                             feat_extra_frames = self._feature_batch_seq_len - temp_feat.shape[0]
                             extra_feat = np.ones((feat_extra_frames, temp_feat.shape[1])) * 1e-6
@@ -183,6 +182,7 @@ class DataGenerator(object):
                             for l_row in extra_labels:
                                 self._circ_buf_label.append(l_row)
 
+                        # 对这个值加一来读取下一个文件
                         file_cnt = file_cnt + 1
 
                     # Read one batch size from the circular buffer

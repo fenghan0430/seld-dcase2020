@@ -4,6 +4,7 @@ from keras.api._v2.keras.layers import (Bidirectional, Conv2D, MaxPooling2D, Inp
 from keras.api._v2.keras.models import Model, load_model
 from keras.api._v2.keras.optimizers import Adam
 from keras.api._v2 import keras
+from keras.api._v2.keras.regularizers import l1
 import tensorflow as tf
 import numpy as np
 from IPython import embed
@@ -50,8 +51,7 @@ def get_model(
     spec_rnn = Reshape((data_out[0][-2], -1))(spec_cnn)
     for nb_rnn_filt in rnn_size:
         spec_rnn = Bidirectional(
-            GRU(nb_rnn_filt, activation='sigmoid', dropout=dropout_rate, recurrent_dropout=dropout_rate,
-                return_sequences=True),
+            GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate, return_sequences=True),
             merge_mode='mul'
         )(spec_rnn)
     
@@ -72,10 +72,17 @@ def get_model(
     sed = Activation('sigmoid', name='sed_out')(sed)
 
     model = None
-    if doa_objective is 'mse':
+    if doa_objective == 'mse':
+        # 余弦退火
+        # decay_steps = 训练数据总数 / 批次 * 轮数
+        # cosine_decay = tf.keras.experimental.CosineDecay(initial_learning_rate=1., decay_steps=1000)
+        
+        # 分段学习率
+        lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries=[400, 2000],values=[0.001, 0.0005, 0.0001])
+        
         model = Model(inputs=spec_start, outputs=[sed, doa])
         model.compile(optimizer=Adam(), loss=['binary_crossentropy', 'mse'], loss_weights=weights)
-    elif doa_objective is 'masked_mse':
+    elif doa_objective == 'masked_mse':
         doa_concat = Concatenate(axis=-1, name='doa_concat')([sed, doa])
         model = Model(inputs=spec_start, outputs=[sed, doa_concat])
         model.compile(optimizer=Adam(), loss=['binary_crossentropy', masked_mse], loss_weights=weights)
@@ -102,9 +109,9 @@ def masked_mse(y_gt, model_out):
 
 
 def load_seld_model(model_file, doa_objective):
-    if doa_objective is 'mse':
+    if doa_objective == 'mse':
         return load_model(model_file)
-    elif doa_objective is 'masked_mse':
+    elif doa_objective == 'masked_mse':
         return load_model(model_file, custom_objects={'masked_mse': masked_mse})
     else:
         print('ERROR: Unknown doa objective: {}'.format(doa_objective))
